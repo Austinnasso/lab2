@@ -90,7 +90,29 @@ static osprd_info_t osprds[NOSPRD];
 static osprd_info_t *file2osprd(struct file *filp)
 {
     
+    int osprd_num = 0;
+    char comp[15] = "/dev/osprda";
     
+    if (filp){ //IF FILE EXISTS
+    char name[1024];
+    char path[1024];
+    int fd = fileno(filp); //OBTAIN FILE DESCRIPTOR
+    
+    sprintf(path, "/proc/self/fd/%d", fd); //WRITE VIRTUAL ADDRESS TO PATH STRING
+    memset(name, 0, sizeof(name)); //ZEROES OUT NAME BUFFER
+    readlink(path, name, sizeof(name)-1); //PUT FILE NAME OF PATH INTO NAME
+        
+    while (osprd_num < NOSPRD)
+    {
+        if (strcmp(name, comp) == 0))
+            return osprds[osprd_num];
+        
+        comp[10] += 1;
+        osprd_num++;
+    }
+    }
+    
+    return NULL;
 }
 
 /*
@@ -113,10 +135,11 @@ static void for_each_open_file(struct task_struct *task,
  */
 static void osprd_process_request(osprd_info_t *d, struct request *req)
 {
+    
+    unsigned long offset = SECTOR_SIZE*req->sector;
+    unsigned long num_bytes = SECTOR_SIZE*req->current_nr_sectors;
+    
 	if (!blk_fs_request(req)) {
-        
-        
-        
 		end_request(req, 0);
 		return;
 	}
@@ -130,9 +153,19 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 	// 'req->buffer' members, and the rq_data_dir() function.
 
 	// Your code here.
-	eprintk("Should process request...\n");
-
-	end_request(req, 1);
+    if (rq_data_dir(req) == WRITE) //WRITE FROM BUFFER
+        memcpy(d->data+offset, req->buffer, num_bytes);
+    
+    else if (rq_data_dir(req) == READ) //READ (WRITE TO BUFFER)
+        memcpy(req->buffer, d->data+offset, num_bytes);
+    
+    else
+    {
+        eprintk("An unexpected error ocurred.");
+        end_request(req, 0);
+    }
+    
+    end_request(req, 1);
 }
 
 
