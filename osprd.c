@@ -96,35 +96,6 @@ static osprd_info_t osprds[NOSPRD];
  *   If not, return NULL.
  */
 static osprd_info_t *file2osprd(struct file *filp);
-=======
-
-//EDIT: 5/11/15 12:33PM
-static osprd_info_t *file2osprd(struct file *filp);/*
-{
-    int osprd_num = 0;
-    char comp[15] = "/dev/osprda";
-    
-    if (filp){ //IF FILE EXISTS
-    char name[1024];
-    char path[1024];
-    int fd = fileno(filp); //OBTAIN FILE DESCRIPTOR
-    
-    sprintf(path, "/proc/self/fd/%d", fd); //WRITE VIRTUAL ADDRESS TO PATH STRING
-    memset(name, 0, sizeof(name)); //ZEROES OUT NAME BUFFER
-    readlink(path, name, sizeof(name)-1); //PUT FILE NAME OF PATH INTO NAME
-        
-    while (osprd_num < NOSPRD)
-    {
-        if (strcmp(name, comp) == 0))
-            return osprds[osprd_num];
-        
-        comp[10] += 1;
-        osprd_num++;
-    }
-    
-    return NULL;
-}
-                                                    */
 
 /*
  * for_each_open_file(task, callback, user_data)
@@ -133,17 +104,7 @@ static osprd_info_t *file2osprd(struct file *filp);/*
  *   the open file, and 'user_data' is copied from for_each_open_file's third
  *   argument.
  */
-static void for_each_open_file(struct task_struct *task, void (*callback)(struct file *filp, osprd_info_t *user_data), osprd_info_t *user_data)
-{
-    struct file *tmp = task->fd_array[0];
-    int x = 0; 
-    while (tmp != NULL)
-    {
-        tmp = task->fd_array[x];
-        callback(tmp, user_data);
-        x++;
-    }
-}
+static void for_each_open_file(struct task_struct *task, void (*callback)(struct file *filp, osprd_info_t *user_data), osprd_info_t *user_data);
 
 
 /*
