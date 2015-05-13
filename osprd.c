@@ -87,9 +87,8 @@ static osprd_info_t osprds[NOSPRD];
  */
 
 //EDIT: 5/11/15 12:33PM
-static osprd_info_t *file2osprd(struct file *filp)
+static osprd_info_t *file2osprd(struct file *filp);/*
 {
-    
     int osprd_num = 0;
     char comp[15] = "/dev/osprda";
     
@@ -110,10 +109,10 @@ static osprd_info_t *file2osprd(struct file *filp)
         comp[10] += 1;
         osprd_num++;
     }
-    }
     
     return NULL;
 }
+                                                    */
 
 /*
  * for_each_open_file(task, callback, user_data)
@@ -122,10 +121,15 @@ static osprd_info_t *file2osprd(struct file *filp)
  *   the open file, and 'user_data' is copied from for_each_open_file's third
  *   argument.
  */
-static void for_each_open_file(struct task_struct *task,
-			       void (*callback)(struct file *filp,
-						osprd_info_t *user_data),
-			       osprd_info_t *user_data);
+static void for_each_open_file(struct task_struct *task, void (*callback)(struct file *filp, osprd_info_t *user_data), osprd_info_t *user_data)
+{
+    FILE *tmp;
+    for (int x = 0; x < task->files.count; x++)
+    {
+        tmp = task->fd_array[x];
+        callback(tmp, user_data);
+    }
+}
 
 
 /*
