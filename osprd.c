@@ -44,7 +44,12 @@ MODULE_AUTHOR("Skeletor");
 static int nsectors = 32;
 module_param(nsectors, int, 0);
 
-
+//define the struct to hold the read pids
+typedef struct
+{
+	pid_t pid;
+	struct read_list *next;
+} read_list;
 /* The internal representation of our device. */
 typedef struct osprd_info {
 	uint8_t *data;                  // The data array. Its size is
@@ -64,7 +69,12 @@ typedef struct osprd_info {
 
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
-
+	unsigned num_read_locks;
+	unsigned num_write_locks;
+	//in addition to the number, we must track a list of read locks
+	//and a pid of the write lock (if we have one)
+	pid_t write_pid;
+	read_list *read_pids;
 	// The following elements are used internally; you don't need
 	// to understand them.
 	struct request_queue *queue;    // The device request queue.
@@ -85,6 +95,8 @@ static osprd_info_t osprds[NOSPRD];
  *   If so, return a pointer to the ramdisk's osprd_info_t.
  *   If not, return NULL.
  */
+static osprd_info_t *file2osprd(struct file *filp);
+=======
 
 //EDIT: 5/11/15 12:33PM
 static osprd_info_t *file2osprd(struct file *filp);/*
@@ -123,11 +135,13 @@ static osprd_info_t *file2osprd(struct file *filp);/*
  */
 static void for_each_open_file(struct task_struct *task, void (*callback)(struct file *filp, osprd_info_t *user_data), osprd_info_t *user_data)
 {
-    FILE *tmp;
-    for (int x = 0; x < task->files.count; x++)
+    struct file *tmp = task->fd_array[0];
+    int x = 0; 
+    while (tmp != NULL)
     {
         tmp = task->fd_array[x];
         callback(tmp, user_data);
+        x++;
     }
 }
 
@@ -139,7 +153,6 @@ static void for_each_open_file(struct task_struct *task, void (*callback)(struct
  */
 static void osprd_process_request(osprd_info_t *d, struct request *req)
 {
-    
     unsigned long offset = SECTOR_SIZE*req->sector;
     unsigned long num_bytes = SECTOR_SIZE*req->current_nr_sectors;
     
@@ -198,7 +211,53 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		// as appropriate.
 
 		// Your code here.
+		printk("Closing the file and releasing the lock");
+		spin_lock(&(d->mutex));
+		if(!(F_OSPRD_LOCKED && filp->f_flags))
+		{
+			spin_unlock(&(d->mutex));
+			//return -EINVAL because the file hasn't locked the disc
+			return -EINVAL;
+		}
+		else
+		{
+			//if we are writing, decrement the number of writing lcosk
+			if(filp_writable)
+			{
+				d->num_write_locks -= 1;
+				if(d->num_write_locks != 0)
+					printk("Uh-oh, we had more than one write lock :(");
+				d->write_pid = -1;
+			}
+			else
+			{
+				//we are reading, remove this node from the read_pids lsit and adjust the pointers accordingly
 
+				//loop through list of read locks looking for the pid
+				read_list* looping = d->read_pids;
+				read_list* prev = NULL;
+				while(looping != NULL && looping->pid != current->pid)
+				{
+					prev = looping;
+					looping = looping->next;
+				}
+				if(looping == NULL)
+				{
+					//we didn't find this pid in the read list
+					printk("We didn't find lock with pid: %u while trying to remove it from the read list", current->pid);
+				}
+				else
+				{
+					//remove looping node from the list
+					prev->next = looping->next;
+					//decrement number of read locks
+				d->num_read_locks -= 1;
+				}
+			}
+			//wake up procs and unlock the lock
+			wake_up_all(&(d->blockq));
+			osp_spin_unlock(&(d->mutex));
+		}
 		// This line avoids compiler warnings; you may remove it.
 		(void) filp_writable, (void) d;
 
@@ -311,6 +370,11 @@ static void osprd_setup(osprd_info_t *d)
 	osp_spin_lock_init(&d->mutex);
 	d->ticket_head = d->ticket_tail = 0;
 	/* Add code here if you add fields to osprd_info_t. */
+	d->num_write_locks = 0;
+	d->num_read_locks = 0;
+	//no one is writing to the disc at the start
+	d->write_pid = -1;
+	d->read_pids = NULL;
 }
 
 
