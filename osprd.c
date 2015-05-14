@@ -270,6 +270,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         if (wait_event_interruptible(d->blockq, ((filp_readable && !filp_writable) || !d->num_read_locks) && !d->num_read_locks && ticket == d->ticket_tail))
             d->ticket_tail++;
         
+        //LOCK SHARED DATA AGAIN
+        osp_spin_lock(&(d->mutex));
+        
         //FILE TO LOCKED
         filp->f_flags |= F_OSPRD_LOCKED;
         
@@ -297,6 +300,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             tmp->next = NULL;
             prink("LOCK RAM DISK FOR READING");
         }
+        
+        //UNLOCK SHARED DATA
+        osp_spin_unlock(&(d->mutex));
     }
 
 		// EXERCISE: Lock the ramdisk.
