@@ -274,13 +274,13 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         //CHECK FOR DEADLOCK FROM CURRENT = READ LOCK
         struct read_list *tmp1 = &d->read_pids;
         int j = 0;
-        while (j < d->num_read_locks || tmp1->pid == current->pid)
+        while (j < d->num_read_locks || (*tmp1).pid == current->pid)
         {
-            tmp1 = &tmp1->next;
+            tmp1 = (*tmp1).next;
             j++;
         }
         
-        if (tmp1->pid == current->pid)
+        if (tmp1.pid == current->pid)
         {
             osp_spin_unlock(&(d->mutex));
             return -EDEADLK;
@@ -323,17 +323,17 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             //ACCESS READ LIST PIDs AND ADD CURRENT PROCESS TO READ LIST
             if (d->num_read_locks != 0)
             {
-                tmp = &d->read_pids;
+                tmp = d.read_pids;
                 while (i < d->num_read_locks)
                 {
-                    tmp = &tmp->next;
+                    tmp = (*tmp).next;
                     i++;
                 }
             }
             
             tmp = kmalloc(sizeof(read_list*), GFP_ATOMIC);
-            tmp.pid = current.pid;
-            tmp->next = NULL;
+            (*tmp).pid = current->pid;
+            (*tmp)->next = NULL;
             
             //INCREASE NUMBER OF READ LOCKS
             d->num_read_locks++;
