@@ -49,7 +49,6 @@ typedef struct
 {
 	pid_t pid;
 	struct read_list *next;
-    
 } read_list;
 /* The internal representation of our device. */
 typedef struct osprd_info {
@@ -273,15 +272,15 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         
         //CHECK FOR DEADLOCK FROM CURRENT = READ LOCK
-        struct read_list *tmp1 = d->read_pids;
+        struct read_list *tmp1 = &d->read_pids;
         int j = 0;
-        while (j < d->num_read_locks || struct tmp1->pid == current->pid)
+        while (j < d->num_read_locks || tmp1->pid == current->pid)
         {
-            struct tmp1 = struct tmp1->next;
+            tmp1 = &tmp1->next;
             j++;
         }
         
-        if (struct tmp1->pid == current->pid)
+        if (tmp1->pid == current->pid)
         {
             osp_spin_unlock(&(d->mutex));
             return -EDEADLK;
@@ -324,16 +323,16 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             //ACCESS READ LIST PIDs AND ADD CURRENT PROCESS TO READ LIST
             if (d->num_read_locks != 0)
             {
-                struct tmp = d->read_pids;
+                tmp = &d->read_pids;
                 while (i < d->num_read_locks)
                 {
-                    struct tmp = struct tmp->next;
+                    tmp = &tmp->next;
                     i++;
                 }
             }
             
-            tmp = kmalloc(sizeof(read_list*));
-            tmp.pid = current->pid;
+            tmp = kmalloc(sizeof(read_list*), GFP_ATOMIC);
+            tmp.pid = current.pid;
             tmp->next = NULL;
             
             //INCREASE NUMBER OF READ LOCKS
