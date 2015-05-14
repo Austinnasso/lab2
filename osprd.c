@@ -273,8 +273,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         
         //CHECK FOR DEADLOCK FROM CURRENT = READ LOCK
-        struct read_list *tmp1 = d->read_list;
-        while (i < num_read_locks || tmp1->pid == current->pid)
+        struct read_list *tmp1 = d->read_pids;
+        while (i < d->num_read_locks || tmp1->pid == current->pid)
             tmp1 = tmp1->next;
         
         if (tmp1->pid == current->pid)
@@ -321,7 +321,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             if (d->num_read_locks != 0)
             {
                 tmp = d->read_pids;
-                while (i < num_read_locks)
+                while (i < d->num_read_locks)
                     tmp = tmp->next;
             }
             
