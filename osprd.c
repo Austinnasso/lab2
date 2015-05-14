@@ -272,7 +272,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         
         //CHECK FOR DEADLOCK FROM CURRENT = READ LOCK
-        struct read_list *tmp1 = d->read_pids;
+        read_list *tmp1 = d->read_pids;
         int j = 0;
         while (j < d->num_read_locks || tmp1->pid == current->pid)
         {
@@ -317,7 +317,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         //RAM OPEN FOR READING BUT NOT READING/WRITING
         if (filp_readable && !filp_writable)
         {
-            struct read_list *tmp;
+            read_list *tmp;
             int i = 0;
             
             //ACCESS READ LIST PIDs AND ADD CURRENT PROCESS TO READ LIST
