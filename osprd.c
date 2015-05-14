@@ -48,7 +48,7 @@ module_param(nsectors, int, 0);
 typedef struct
 {
 	pid_t pid;
-	read_list *next;
+	struct read_list *next;
 } read_list;
 /* The internal representation of our device. */
 typedef struct osprd_info {
