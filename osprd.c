@@ -275,7 +275,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         
         //BLOCK PROCESS UNTIL NOT LOCKED, READ/WRITE LOCKS EQUAL 0, AND CORRECT TICKET NUMBER
-        wait_event_interruptible(d->blockq, ((filp_readable && !filp_writable) || !d->num_read_locks) && !d->num_read_locks && ticket == d->ticket_tail)
+        wait_event_interruptible(d->blockq, ((filp_readable && !filp_writable) || (!d->num_read_locks && !d->num_read_locks && ticket == d->ticket_tail))
         
         //LOCK SHARED DATA AGAIN
         osp_spin_lock(&(d->mutex));
