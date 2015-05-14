@@ -263,12 +263,19 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         osp_spin_lock(&(d->mutex));
         ticket = d->ticket_head;
         d->ticket_head++;
+        
+        //CHECK FOR DEADLOCK
+        if (current->pid == d->write_pid)
+        {
+            osp_spin_unlock(&(d->mutex));
+            return -EDEADLK;
+        }
+        
         osp_spin_unlock(&(d->mutex));
         
         
         //BLOCK PROCESS UNTIL NOT LOCKED, READ/WRITE LOCKS EQUAL 0, AND CORRECT TICKET NUMBER
-        if (wait_event_interruptible(d->blockq, ((filp_readable && !filp_writable) || !d->num_read_locks) && !d->num_read_locks && ticket == d->ticket_tail))
-            d->ticket_tail++;
+        wait_event_interruptible(d->blockq, ((filp_readable && !filp_writable) || !d->num_read_locks) && !d->num_read_locks && ticket == d->ticket_tail)
         
         //LOCK SHARED DATA AGAIN
         osp_spin_lock(&(d->mutex));
@@ -279,27 +286,35 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         //INCREASE NUMBER OF WRITE LOCKS
         if (filp_writable){
             d->num_write_locks++;
-            d->ticket_tail++;
+            d->write_pid = current->pid;
         }
         
         //RAM OPEN FOR READING BUT NOT READING/WRITING
         if (filp_readable && !filp_writable)
         {
-            //INCREASE NUMBER OF READ LOCKS
-            d->num_read_locks++;
+            struct read_list *tmp;
             
             //ACCESS READ LIST PIDs AND ADD CURRENT PROCESS TO READ LIST
-            struct read_list tmp = d->read_list;
-            while (tmp != NULL)
+            if (d->num_read_locks != 0)
             {
-                tmp = tmp->next;
+                tmp = d->read_pids;
+                while (tmp != NULL)
+                {
+                    tmp = tmp->next;
+                }
             }
             
-            tmp = kmalloc(sizeof(read_list));
+            tmp = kmalloc(sizeof(read_list*));
             tmp.pid = current->pid;
             tmp->next = NULL;
-            prink("LOCK RAM DISK FOR READING");
+            
+            //INCREASE NUMBER OF READ LOCKS
+            d->num_read_locks++;
         }
+        
+        
+        //INCREMENT NEXT TICKET
+        d->ticket_tail++;
         
         //UNLOCK SHARED DATA
         osp_spin_unlock(&(d->mutex));
@@ -311,7 +326,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// to write-lock the ramdisk; otherwise attempt to read-lock
 		// the ramdisk.
 		//
-                // This lock request must block using 'd->blockq' until:
+        // This lock request must block using 'd->blockq' until:
 		// 1) no other process holds a write lock;
 		// 2) either the request is for a read lock, or no other process
 		//    holds a read lock; and
