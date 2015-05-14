@@ -341,7 +341,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         //UNLOCK SHARED DATA
         osp_spin_unlock(&(d->mutex));
-    }
+    
 
 		// EXERCISE: Lock the ramdisk.
 		//
