@@ -264,24 +264,46 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         ticket = d->ticket_head;
         d->ticket_head++;
         
-        //CHECK FOR DEADLOCK
+        //CHECK FOR DEADLOCK FROM CURRENT = WRITE LOCK
         if (current->pid == d->write_pid)
         {
             osp_spin_unlock(&(d->mutex));
             return -EDEADLK;
         }
         
+        
+        //CHECK FOR DEADLOCK FROM CURRENT = READ LOCK
+        struct read_list *tmp1 = d->read_list;
+        while (i < num_read_locks || tmp1->pid == current->pid)
+            tmp1 = tmp1->next;
+        
+        if (tmp1->pid == current->pid)
+        {
+            osp_spin_unlock(&(d->mutex));
+            return -EDEADLK;
+        }
+            
+        
         osp_spin_unlock(&(d->mutex));
         
         
         //BLOCK PROCESS UNTIL NOT LOCKED, READ/WRITE LOCKS EQUAL 0, AND CORRECT TICKET NUMBER
-        wait_event_interruptible(d->blockq, ((filp_readable && !filp_writable) || (!d->num_read_locks && !d->num_read_locks && ticket == d->ticket_tail))
+        r = wait_event_interruptible(d->blockq, ((filp_readable && !d->num_write_locks) || (!d->num_read_locks && !d->num_write_locks && ticket == d->ticket_tail)));
+        
+        //PROCESS RECEIVED SIGNAL, SO WE UPDATE TICKETS AS IF PROCESS DIDN'T EXIST
+        if (r == -ERESTARTSYS) {
+            
+            //IF PROCESS WAS ABOUT TO RUN, CALL NEXT PROCESS IN QUEUE
+            if(ticket == d->ticket_tail)
+                d->ticket_tail++;
+            else
+                d->ticket_head--;
+            return r;
+        }
         
         //LOCK SHARED DATA AGAIN
         osp_spin_lock(&(d->mutex));
         
-        //FILE TO LOCKED
-        filp->f_flags |= F_OSPRD_LOCKED;
         
         //INCREASE NUMBER OF WRITE LOCKS
         if (filp_writable){
@@ -293,15 +315,14 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         if (filp_readable && !filp_writable)
         {
             struct read_list *tmp;
+            int i = 0;
             
             //ACCESS READ LIST PIDs AND ADD CURRENT PROCESS TO READ LIST
             if (d->num_read_locks != 0)
             {
                 tmp = d->read_pids;
-                while (tmp != NULL)
-                {
+                while (i < num_read_locks)
                     tmp = tmp->next;
-                }
             }
             
             tmp = kmalloc(sizeof(read_list*));
@@ -312,6 +333,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             d->num_read_locks++;
         }
         
+        //FILE TO LOCKED
+        filp->f_flags |= F_OSPRD_LOCKED;
         
         //INCREMENT NEXT TICKET
         d->ticket_tail++;
