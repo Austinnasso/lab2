@@ -49,6 +49,7 @@ typedef struct
 {
 	pid_t pid;
 	struct read_list *next;
+    
 } read_list;
 /* The internal representation of our device. */
 typedef struct osprd_info {
@@ -173,15 +174,14 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 
 		// Your code here.
 		printk("Closing the file and releasing the lock");
-		spin_lock(&(d->mutex));
-		if(!(F_OSPRD_LOCKED && filp->f_flags))
+		if(!(F_OSPRD_LOCKED & filp->f_flags))
 		{
-			spin_unlock(&(d->mutex));
 			//return -EINVAL because the file hasn't locked the disc
 			return -EINVAL;
 		}
 		else
 		{
+            osp_spin_lock(&(d->mutex));
 			//if we are writing, decrement the number of writing lcosk
 			if(filp_writable)
 			{
@@ -212,12 +212,13 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 					//remove looping node from the list
 					prev->next = looping->next;
 					//decrement number of read locks
-				d->num_read_locks -= 1;
+                    d->num_read_locks -= 1;
 				}
 			}
 			//wake up procs and unlock the lock
+            osp_spin_unlock(&(d->mutex));
 			wake_up_all(&(d->blockq));
-			osp_spin_unlock(&(d->mutex));
+			
 		}
 		// This line avoids compiler warnings; you may remove it.
 		(void) filp_writable, (void) d;
@@ -244,13 +245,59 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
+    
+    //IS FILE OPEN FOR READING
+    int filp_readable = (filp->f_mode & FMODE_READ) != 0;
 
 	// This line avoids compiler warnings; you may remove it.
 	(void) filp_writable, (void) d;
 
 	// Set 'r' to the ioctl's return value: 0 on success, negative on error
+    
+    //TO DETERMINE PROCESS TICKET NUMBER FOR QUEUE
+    unsigned ticket;
 
 	if (cmd == OSPRDIOCACQUIRE) {
+        
+        //OBTAIN TICKET ONE AT A TIME
+        osp_spin_lock(&(d->mutex));
+        ticket = d->ticket_head;
+        d->ticket_head++;
+        osp_spin_unlock(&(d->mutex));
+        
+        
+        //BLOCK PROCESS UNTIL NOT LOCKED, READ/WRITE LOCKS EQUAL 0, AND CORRECT TICKET NUMBER
+        if (wait_event_interruptible(d->blockq, ((filp_readable && !filp_writable) || !d->num_read_locks) && !d->num_read_locks && ticket == d->ticket_tail))
+            d->ticket_tail++;
+        
+        //FILE TO LOCKED
+        filp->f_flags |= F_OSPRD_LOCKED;
+        
+        //INCREASE NUMBER OF WRITE LOCKS
+        if (filp_writable){
+            d->num_write_locks++;
+            d->ticket_tail++;
+        }
+        
+        //RAM OPEN FOR READING BUT NOT READING/WRITING
+        if (filp_readable && !filp_writable)
+        {
+            //INCREASE NUMBER OF READ LOCKS
+            d->num_read_locks++;
+            
+            //ACCESS READ LIST PIDs AND ADD CURRENT PROCESS TO READ LIST
+            struct read_list tmp = d->read_list;
+            while (tmp != NULL)
+            {
+                tmp = tmp->next;
+            }
+            
+            tmp = kmalloc(sizeof(read_list));
+            tmp.pid = current->pid;
+            tmp->next = NULL;
+            prink("LOCK RAM DISK FOR READING");
+        }
+    }
 
 		// EXERCISE: Lock the ramdisk.
 		//
