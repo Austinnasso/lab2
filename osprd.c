@@ -277,11 +277,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         int j = 0;
         while (j < d->num_read_locks || struct tmp1->pid == current->pid)
         {
-            struct tmp1 = tmp1->next;
+            struct tmp1 = struct tmp1->next;
             j++;
         }
         
-        if (tmp1->pid == current->pid)
+        if (struct tmp1->pid == current->pid)
         {
             osp_spin_unlock(&(d->mutex));
             return -EDEADLK;
@@ -324,7 +324,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             //ACCESS READ LIST PIDs AND ADD CURRENT PROCESS TO READ LIST
             if (d->num_read_locks != 0)
             {
-                tmp = d->read_pids;
+                struct tmp = d->read_pids;
                 while (i < d->num_read_locks)
                 {
                     struct tmp = struct tmp->next;
