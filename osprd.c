@@ -50,6 +50,32 @@ typedef struct
 	pid_t pid;
 	struct read_list *next;
 } read_list;
+
+typedef struct
+{
+    unsigned ticket;
+    struct ticket_list *next;
+} ticket_list;
+
+void clean_ticket_list(ticket_list *t)
+{
+    ticket_list *tmp;
+    while (t != NULL)
+    {
+        tmp = t;
+        t = t->next;
+        kfree(t);
+    }
+}
+
+void addTicket(ticket_list *t, unsigned ticket)
+{
+    ticket_list *newNode = kmalloc(sizeof(ticket_list), GFP_ATOMIC);
+    newNode->next = NULL;
+    newNode->ticket = ticket;
+    t->next = newNode;
+}
+
 /* The internal representation of our device. */
 typedef struct osprd_info {
 	uint8_t *data;                  // The data array. Its size is
@@ -75,6 +101,7 @@ typedef struct osprd_info {
 	//and a pid of the write lock (if we have one)
 	pid_t write_pid;
 	read_list *read_pids;
+    ticket_list *dead_tickets;
 	// The following elements are used internally; you don't need
 	// to understand them.
 	struct request_queue *queue;    // The device request queue.
@@ -311,7 +338,18 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             if(ticket == d->ticket_tail)
                 d->ticket_tail++;
             else
-                d->ticket_head--;
+            {
+                //CHECK IF DEAD TICKET LIST EXISTS
+                if (d->dead_tickets)
+                    addTicket(d->addTicket, ticket);
+                else
+                {
+                    //OTHERWISE CREATE TICKET LIST AND MAKE FIRST NODE
+                    d->dead_tickets = kmalloc(sizeof(ticket_list), GFP_ATOMIC);
+                    d->ticket = ticket;
+                    d->next = NULL;
+                }
+            }
             return r;
         }
 	//schedule();
@@ -573,6 +611,7 @@ static void osprd_setup(osprd_info_t *d)
 	//no one is writing to the disc at the start
 	d->write_pid = -1;
 	d->read_pids = NULL;
+    d->dead_tickets = NULL;
 }
 
 
