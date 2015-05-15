@@ -346,8 +346,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
                 {
                     //OTHERWISE CREATE TICKET LIST AND MAKE FIRST NODE
                     d->dead_tickets = kmalloc(sizeof(ticket_list), GFP_ATOMIC);
-                    d->ticket = ticket;
-                    d->next = NULL;
+                    d->dead_tickets->ticket = ticket;
+                    d->dead_tickets->next = NULL;
                 }
             }
             return r;
