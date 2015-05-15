@@ -341,7 +341,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             {
                 //CHECK IF DEAD TICKET LIST EXISTS
                 if (d->dead_tickets)
-                    addTicket(d->addTicket, ticket);
+                    addTicket(d->dead_tickets, ticket);
                 else
                 {
                     //OTHERWISE CREATE TICKET LIST AND MAKE FIRST NODE
