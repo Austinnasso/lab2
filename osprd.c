@@ -374,7 +374,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         if (r == -ERESTARTSYS) {
             //IF PROCESS WAS ABOUT TO RUN, CALL NEXT PROCESS IN QUEUE
             if(ticket == d->ticket_tail)
-                d->ticket_tail++;
+            {
+                do{
+                    d->ticket_tail++;
+                }
+                while (inTicketList(d->dead_tickets, d->ticket_tail));
+            }
             else
             {
                 //CHECK IF DEAD TICKET LIST EXISTS
