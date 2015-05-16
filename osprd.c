@@ -64,7 +64,7 @@ void clean_ticket_list(ticket_list *t)
     {
         tmp = t;
         t = t->next;
-        kfree(t);
+        kfree(tmp);
     }
 }
 
