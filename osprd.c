@@ -73,8 +73,26 @@ void addTicket(ticket_list *t, unsigned ticket)
     ticket_list *newNode = kmalloc(sizeof(ticket_list), GFP_ATOMIC);
     newNode->next = NULL;
     newNode->ticket = ticket;
+	while(t != NULL)
+	{
+		t = t->next;
+	}
     t->next = newNode;
 }
+
+int inTicketList(ticket_list *tmp, unsigned ticket)
+{
+    while (tmp != NULL)
+    {
+        if(tmp->ticket == ticket)
+            return 1;
+        
+        tmp = tmp->next;
+    }
+    
+    return 0;
+}
+
 
 /* The internal representation of our device. */
 typedef struct osprd_info {
@@ -110,6 +128,47 @@ typedef struct osprd_info {
 	struct gendisk *gd;             // The generic disk.
 } osprd_info_t;
 
+void addReadLock(read_list* list, pid_t pid, osprd_info_t *d)
+{
+	if(list == NULL)
+	{
+		read_list* newNode = kmalloc(sizeof(read_list), GFP_ATOMIC);
+		newNode->next = NULL;
+		newNode->pid = pid;
+		d->read_pids = newNode;
+		d->num_read_locks += 1;
+	}
+	else
+	{
+		read_list* looping = list;
+		while(looping != NULL && looping->next != NULL)
+		{
+			looping = looping->next;
+		}
+		d->num_read_locks += 1;
+		read_list* newNode= kmalloc(sizeof(read_list), GFP_ATOMIC);
+		newNode->next = NULL;
+		newNode->pid = current->pid;
+		looping->next = newNode;
+	}
+}
+void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
+{
+	if(list == NULL)
+		return;
+	else
+	{
+		read_list* prev = NULL;
+		while(list != NULL && list->pid != pid)
+		{
+			prev = list;
+			list = list->next;
+		}
+		prev->next = list->next;
+		kfree(list);
+		d->num_read_locks -= 1;
+	}
+}
 #define NOSPRD 4
 static osprd_info_t osprds[NOSPRD];
 
@@ -199,7 +258,6 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		// as appropriate.
 
 		// Your code here.
-		printk("Closing the file and releasing the lock\n");
 		if(!(F_OSPRD_LOCKED & filp->f_flags))
 		{
 			//return -EINVAL because the file hasn't locked the disc
@@ -219,27 +277,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 			else
 			{
 				//we are reading, remove this node from the read_pids lsit and adjust the pointers accordingly
-
-				//loop through list of read locks looking for the pid
-				read_list* looping = d->read_pids;
-				read_list* prev = NULL;
-				while(looping != NULL && looping->pid != current->pid)
-				{
-					prev = looping;
-					looping = looping->next;
-				}
-				if(looping == NULL)
-				{
-					//we didn't find this pid in the read list
-					printk("We didn't find lock with pid: %u while trying to remove it from the read list", current->pid);
-				}
-				else
-				{
-					//remove looping node from the list
-					prev->next = looping->next;
-					//decrement number of read locks
-                    d->num_read_locks -= 1;
-				}
+				removeReadLock(d->read_pids, current->pid, d);
 			}
 			//wake up procs and unlock the lock
 			wake_up_all(&(d->blockq));
@@ -319,6 +357,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         }
         
         
+        
         osp_spin_unlock(&(d->mutex));
         
         int readable = !(d->num_write_locks) && filp_readable;
@@ -333,7 +372,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         //PROCESS RECEIVED SIGNAL, SO WE UPDATE TICKETS AS IF PROCESS DIDN'T EXIST
         if (r == -ERESTARTSYS) {
-          return r;  
             //IF PROCESS WAS ABOUT TO RUN, CALL NEXT PROCESS IN QUEUE
             if(ticket == d->ticket_tail)
                 d->ticket_tail++;
@@ -372,30 +410,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         {
        		if(debug)
 			printk("About to increment read locks\n");
-            read_list *tmp;
-            int i = 0;
-            
-            read_list* newNode = kmalloc(sizeof(read_list), GFP_ATOMIC);
-            newNode->pid = current->pid;
-            newNode->next = NULL;
-            
-            //ACCESS READ LIST PIDs AND ADD CURRENT PROCESS TO READ LIST
-            if (d->num_read_locks != 0)
-            {
-                tmp = d->read_pids;
-                while (i < d->num_read_locks - 1)
-                {
-                    tmp = tmp->next;
-                    i++;
-                }
-            
-                tmp->next = newNode;
-            }
-            else
-                d->read_pids = newNode;
-            
-            //INCREASE NUMBER OF READ LOCKS
-            d->num_read_locks++;
+		addReadLock(d->read_pids, current->pid, d);
         }
         
         //FILE TO LOCKED
@@ -466,6 +481,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		    osp_spin_unlock(&(d->mutex));
 		    return -EBUSY;
 		}
+        
 		if(d->ticket_head != d->ticket_tail)
 		{
 			osp_spin_unlock(&(d->mutex));
@@ -482,6 +498,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			osp_spin_unlock(&(d->mutex));
 			return -EBUSY;
 			}
+            
 		    tmp1 = tmp1->next;
 		}
 		
@@ -519,16 +536,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			if(d->num_write_locks == 0)
 			{
 				//loop through list of read locks and add a new node
-				read_list* looping = d->read_pids;
-				while(looping != NULL && looping->next != NULL)
-				{
-					looping = looping->next;
-				}
-				d->num_read_locks += 1;
-				read_list* newNode= kmalloc(sizeof(read_list), GFP_ATOMIC);
-				newNode->next = NULL;
-				newNode->pid = current->pid;
-				looping->next = newNode;
+				addReadLock(d->read_pids, current->pid, d);
+                
 				//FILE TO LOCKED
 				filp->f_flags |= F_OSPRD_LOCKED;
 				osp_spin_unlock(&(d->mutex));
@@ -561,23 +570,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			return -EINVAL;
 		}
 		if(filp_readable)
-		{
-			read_list* looping = d->read_pids;
-			read_list* prev = NULL;
-			while(looping != NULL && looping->pid != current->pid)
-			{
-				prev = looping;
-				looping = looping->next;
-			}
-			if(looping == NULL)
-			{
-				//something went wrong: the process isn't in the list butwe were locked
-				printk("Process not in list but the lock was set\n");
-				return -1;
-			}
-			prev->next = looping->next;
-			d->num_read_locks -= 1;
-			osp_spin_unlock(&(d->mutex));
+		{	
+			removeReadLock(d->read_pids, current->pid, d);
 		}
 		else if(filp_writable)
 		{
@@ -585,6 +579,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			d->num_write_locks -= 1;
 
 		}
+        
 		filp->f_flags &= ~F_OSPRD_LOCKED;
 		if(d->num_read_locks == 0 && d->num_write_locks == 0)
 			wake_up_all(&(d->blockq));
