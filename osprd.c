@@ -328,7 +328,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             return -EDEADLK;
         }
         
-                
+        
         //OBTAIN TICKET ONE AT A TIME
         ticket = d->ticket_head;
         d->ticket_head++;
@@ -379,6 +379,25 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         if (filp_writable){
        		if(debug)
                 printk("About to increment write locks\n");
+            
+            //CHECK FOR DEADLOCK FROM CURRENT = READ LOCK
+            read_list *tmp1 = d->read_pids;
+            if(debug)
+                printk("About to check for read dl\n");
+            
+            while (tmp1 != NULL)
+            {
+                if(tmp1->pid == current->pid)
+                {
+                    osp_spin_unlock(&(d->mutex));
+                    return -EDEADLK;
+                }
+                
+                tmp1 = tmp1->next;
+            }
+            
+
+            
             d->num_write_locks++;
             d->write_pid = current->pid;
         }
