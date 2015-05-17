@@ -567,7 +567,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		r = 0;
 
 	} else if (cmd == OSPRDIOCRELEASE) {
-        
+        if (debug)
+            printk("Enter OSPRDIOCRELEASE\n");
 
 		// EXERCISE: Unlock the ramdisk.
 		//
