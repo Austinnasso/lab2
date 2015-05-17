@@ -68,13 +68,6 @@ void clean_ticket_list(ticket_list *t)
     }
 }
 
-void printProcNum()
-{
-    char *end;
-    end = sprintf(end, "%ld", (long)getpid());
-    prink("In process: %s\n", end);
-}
-
 void addTicket(ticket_list *t, unsigned ticket)
 {
     ticket_list *newNode = kmalloc(sizeof(ticket_list), GFP_ATOMIC);
