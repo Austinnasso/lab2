@@ -310,9 +310,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	int debug = 0;
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
-    
-    //IS FILE OPEN FOR READING
-    int filp_readable = (filp->f_mode & FMODE_READ) != 0;
 
 	// This line avoids compiler warnings; you may remove it.
 	(void) filp_writable, (void) d;
@@ -360,15 +357,13 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         osp_spin_unlock(&(d->mutex));
         
-        int readable = !(d->num_write_locks) && filp_readable;
+        int readable = !(d->num_write_locks);
         int writeable = !(d->num_write_locks) && !(d->num_read_locks) && filp_writable && d->ticket_tail == ticket;
+        
         if(debug)
 			printk("About to wait interruptible\n");
         //BLOCK PROCESS UNTIL NOT LOCKED, READ/WRITE LOCKS EQUAL 0, AND CORRECT TICKET NUMBER
-	//while((!readable || !writeable) && d->ticket_head != d->ticket_tail)
-	//{
-        r = wait_event_interruptible(d->blockq, (readable || writeable)); 
-	//((filp_readable && !d->num_write_locks) || (!d->num_read_locks && !d->num_write_locks && ticket == d->ticket_tail)));
+        r = wait_event_interruptible(d->blockq, (readable || writeable));
         
         //PROCESS RECEIVED SIGNAL, SO WE UPDATE TICKETS AS IF PROCESS DIDN'T EXIST
         if (r == -ERESTARTSYS) {
@@ -395,8 +390,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             }
             return r;
         }
-	//schedule();
-	//}
+	
         
         //LOCK SHARED DATA AGAIN
         osp_spin_lock(&(d->mutex));
@@ -409,13 +403,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             d->num_write_locks++;
             d->write_pid = current->pid;
         }
-        
         //RAM OPEN FOR READING BUT NOT READING/WRITING
-        if (filp_readable)
+        else
         {
-       		if(debug)
-			printk("About to increment read locks\n");
-		addReadLock(d->read_pids, current->pid, d);
+            if(debug)
+                printk("About to increment read locks\n");
+            addReadLock(d->read_pids, current->pid, d);
         }
         
         //FILE TO LOCKED
@@ -534,7 +527,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			}
 		}
 		//we can allocate a read lock if we don't have any write locks out
-		else if (filp_readable)
+		else
 		{
 			printk("Trying to acquire a read lock\n");
 			osp_spin_lock(&(d->mutex));
@@ -574,16 +567,19 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			osp_spin_unlock(&(d->mutex));
 			return -EINVAL;
 		}
-		if(filp_readable)
+        
+        if(filp_writable)
+        {
+            d->write_pid = -1;
+            d->num_write_locks -= 1;
+            
+        }
+        
+		else
 		{	
 			removeReadLock(d->read_pids, current->pid, d);
 		}
-		else if(filp_writable)
-		{
-			d->write_pid = -1;
-			d->num_write_locks -= 1;
-
-		}
+    
         
 		filp->f_flags &= ~F_OSPRD_LOCKED;
 		if(d->num_read_locks == 0 && d->num_write_locks == 0)
