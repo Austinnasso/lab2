@@ -42,6 +42,7 @@ MODULE_AUTHOR("Skeletor");
  * You can specify module parameters when you load the module,
  * as an argument to insmod: "insmod osprd.ko nsectors=4096" */
 static int nsectors = 32;
+int debug = 1;
 module_param(nsectors, int, 0);
 
 //define the struct to hold the read pids
@@ -313,7 +314,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 {
 	osprd_info_t *d = file2osprd(filp);	// device info
 	int r = 0;			// return value: initially 0
-	int debug = 1;
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
     unsigned ticket;
