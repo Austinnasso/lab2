@@ -339,9 +339,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         if (debug)
         {
             if (filp_writable)
-                prink("Process opened ram disk for writing.");
+                printk("Process opened ram disk for writing.");
             else
-                prink("Process opened ram disk for reading.");
+                printk("Process opened ram disk for reading.");
         }
         
         
