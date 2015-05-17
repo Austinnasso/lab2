@@ -301,7 +301,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 {
 	osprd_info_t *d = file2osprd(filp);	// device info
 	int r = 0;			// return value: initially 0
-	int debug = 0;
+	int debug = 1;
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
 
@@ -315,7 +315,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 	if (cmd == OSPRDIOCACQUIRE) {
        		if(debug)
-			printk("In acquire\n");
+                printk("In acquire\n");
         
         osp_spin_lock(&(d->mutex));
         //CHECK FOR DEADLOCK FROM CURRENT = WRITE LOCK
