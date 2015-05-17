@@ -339,9 +339,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         if (debug)
         {
             if (filp_writable)
-                printk("Process opened ram disk for writing.");
+                printk("Process opened ram disk for writing.\n");
             else
-                printk("Process opened ram disk for reading.");
+                printk("Process opened ram disk for reading.\n");
         }
         
         
@@ -567,6 +567,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		r = 0;
 
 	} else if (cmd == OSPRDIOCRELEASE) {
+        
 
 		// EXERCISE: Unlock the ramdisk.
 		//
@@ -579,8 +580,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		//check if we are locked
 		if(!(filp->f_flags & F_OSPRD_LOCKED))
 		{
-			return -EINVAL;
+			r = -EINVAL;
 		}
+        
+        else{
         
         osp_spin_lock(&(d->mutex));
         if(filp_writable)
@@ -599,8 +602,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
 		
 		r = 0;
-
-	} else
+        }
+        
+        if (debug)
+            printk("Lock released\n");
+    } else
 		r = -ENOTTY; /* unknown command */
 	return r;
 }
