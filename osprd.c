@@ -424,6 +424,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         //UNLOCK SHARED DATA
         osp_spin_unlock(&(d->mutex));
+        if(debug)
+            printk("Succesfully exited acquire and gave up spink lock\n");
         r = 0;
 
 		// EXERCISE: Lock the ramdisk.
