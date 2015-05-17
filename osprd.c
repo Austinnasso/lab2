@@ -152,6 +152,12 @@ void addReadLock(read_list* list, pid_t pid, osprd_info_t *d)
 		looping->next = newNode;
 	}
 }
+
+void printProcNum()
+{
+    printk("(process: %d)\n", current->pid);
+}
+
 void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
 {
 	if(list == NULL)
@@ -327,7 +333,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         osp_spin_lock(&(d->mutex));
         //CHECK FOR DEADLOCK FROM CURRENT = WRITE LOCK
         if(debug)
+        {
 			printk("About to check for write dl\n");
+        }
 
         if (current->pid == d->write_pid)
         {
@@ -394,7 +402,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         //INCREASE NUMBER OF WRITE LOCKS
         if (filp_writable){
        		if(debug)
-                printk("About to increment write locks\n");
+            {
+                printk("About to increment write locks");
+                printProcNum();
+            }
             
             //CHECK FOR DEADLOCK FROM CURRENT = READ LOCK
             tmp1 = d->read_pids;
