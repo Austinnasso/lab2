@@ -576,7 +576,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
 		filp->f_flags &= ~F_OSPRD_LOCKED;
         
-		if(d->num_read_locks == 0 && d->num_write_locks == 0)
+		//if(d->num_read_locks == 0 && d->num_write_locks == 0)
 			wake_up_all(&(d->blockq));
         
 		osp_spin_unlock(&(d->mutex));
