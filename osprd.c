@@ -48,13 +48,13 @@ module_param(nsectors, int, 0);
 typedef struct read_list
 {
 	pid_t pid;
-	read_list *next;
+	struct read_list *next;
 } read_list;
 
 typedef struct ticket_list
 {
     unsigned ticket;
-    ticket_list *next;
+    struct ticket_list *next;
 } ticket_list;
 
 void clean_ticket_list(ticket_list *t)
