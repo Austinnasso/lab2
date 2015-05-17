@@ -287,6 +287,12 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		}
 		// This line avoids compiler warnings; you may remove it.
 		(void) filp_writable, (void) d;
+        
+        if (debug)
+        {
+            printk("Ramdisk file closed ");
+            printProcNum();
+        }
 
 	}
 
