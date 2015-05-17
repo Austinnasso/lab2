@@ -329,7 +329,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
     unsigned ticket;
-    int readable, writeable;
     read_list *tmp1;
 
     
@@ -382,10 +381,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         ticket = d->ticket_head;
         d->ticket_head++;
         
-        
-        readable = !(d->num_write_locks);
-        writeable = !(d->num_write_locks) && !(d->num_read_locks) && filp_writable && d->ticket_tail == ticket;
-        
         if(debug)
         {
 			printk("About to wait interruptible ");
@@ -395,7 +390,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         osp_spin_unlock(&(d->mutex));
         
         //BLOCK PROCESS UNTIL NOT LOCKED, READ/WRITE LOCKS EQUAL 0, AND CORRECT TICKET NUMBER
-        r = wait_event_interruptible(d->blockq, (readable || writeable));
+        r = wait_event_interruptible(d->blockq, (!(d->num_write_locks) || !(d->num_write_locks) && !(d->num_read_locks) && filp_writable && d->ticket_tail == ticket);
         
         if(debug)
         {
