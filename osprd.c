@@ -256,6 +256,11 @@ static int osprd_open(struct inode *inode, struct file *filp)
 // last copy is closed.)
 static int osprd_close_last(struct inode *inode, struct file *filp)
 {
+    if (debug)
+    {
+        printk("Enter close_last function ");
+        printProcNum();
+    }
 	if (filp) {
 		osprd_info_t *d = file2osprd(filp);
 		int filp_writable = filp->f_mode & FMODE_WRITE;
@@ -268,6 +273,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		if((F_OSPRD_LOCKED & filp->f_flags))
 		{
             osp_spin_lock(&(d->mutex));
+            
             filp->f_flags &= ~F_OSPRD_LOCKED;
 			//if we are writing, decrement the number of writing lcosk
 			if(filp_writable)
@@ -283,6 +289,12 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
             
 			//wake up procs and unlock the lock
             osp_spin_unlock(&(d->mutex));
+            if (debug)
+            {
+                printk("Awake processes before ram disk file close ");
+                printProcNum();
+            }
+            
             wake_up_all(&(d->blockq));
 			
 		}
