@@ -272,7 +272,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 			//if we are writing, decrement the number of writing lcosk
 			if(filp_writable)
 			{
-				d->num_write_locks--;
+				d->num_write_locks = 0;
 				d->write_pid = -1;
 			}
 			else
@@ -456,7 +456,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
                 printProcNum();
             }
             
-            d->num_write_locks++;
+            d->num_write_locks = 1;
             d->write_pid = current->pid;
         }
         //RAM OPEN FOR READING BUT NOT READING/WRITING
@@ -658,7 +658,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         if(filp_writable)
         {
             d->write_pid = -1;
-            d->num_write_locks -= 1;
+            d->num_write_locks = 0;
         }
         
 		else
