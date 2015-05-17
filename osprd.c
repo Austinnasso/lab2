@@ -326,13 +326,22 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         osp_spin_lock(&(d->mutex));
         //CHECK FOR DEADLOCK FROM CURRENT = WRITE LOCK
-       		if(debug)
+        if(debug)
 			printk("About to check for write dl\n");
 
         if (current->pid == d->write_pid)
         {
             osp_spin_unlock(&(d->mutex));
             return -EDEADLK;
+        }
+        
+        //DEBUG RAMDISK OPENED FOR
+        if (debug)
+        {
+            if (filp_writable)
+                prink("Process opened ram disk for writing.");
+            else
+                prink("Process opened ram disk for reading.");
         }
         
         
