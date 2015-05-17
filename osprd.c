@@ -258,31 +258,25 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		// as appropriate.
 
 		// Your code here.
-		if(!(F_OSPRD_LOCKED & filp->f_flags))
+		if((F_OSPRD_LOCKED & filp->f_flags))
 		{
-			//return -EINVAL because the file hasn't locked the disc
-			return -EINVAL;
-		}
-		else
-		{
+            osp_spin_lock(&(d->mutex));
             filp->f_flags &= ~F_OSPRD_LOCKED;
 			//if we are writing, decrement the number of writing lcosk
 			if(filp_writable)
 			{
-				d->num_write_locks -= 1;
+				d->num_write_locks--;
 				d->write_pid = -1;
 			}
 			else
 			{
 				//we are reading, remove this node from the read_pids lsit and adjust the pointers accordingly
-                osp_spin_lock(&(d->mutex));
 				removeReadLock(d->read_pids, current->pid, d);
-                osp_spin_unlock(&(d->mutex));
 			}
             
 			//wake up procs and unlock the lock
-            if (!d->num_write_locks && !d->num_read_locks)
-                wake_up_all(&(d->blockq));
+            osp_spin_unlock(&(d->mutex));
+            wake_up_all(&(d->blockq));
 			
 		}
 		// This line avoids compiler warnings; you may remove it.
@@ -322,6 +316,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	if (cmd == OSPRDIOCACQUIRE) {
        		if(debug)
 			printk("In acquire\n");
+        
         osp_spin_lock(&(d->mutex));
         //CHECK FOR DEADLOCK FROM CURRENT = WRITE LOCK
        		if(debug)
@@ -353,15 +348,13 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
             tmp1 = tmp1->next;
         }
         
-        
-        
-        osp_spin_unlock(&(d->mutex));
-        
         int readable = !(d->num_write_locks);
         int writeable = !(d->num_write_locks) && !(d->num_read_locks) && filp_writable && d->ticket_tail == ticket;
         
         if(debug)
 			printk("About to wait interruptible\n");
+        
+        osp_spin_unlock(&(d->mutex));
         
         //BLOCK PROCESS UNTIL NOT LOCKED, READ/WRITE LOCKS EQUAL 0, AND CORRECT TICKET NUMBER
         r = wait_event_interruptible(d->blockq, (readable || writeable));
