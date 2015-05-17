@@ -45,16 +45,16 @@ static int nsectors = 32;
 module_param(nsectors, int, 0);
 
 //define the struct to hold the read pids
-typedef struct
+typedef struct read_list
 {
 	pid_t pid;
-	struct read_list *next;
+	read_list *next;
 } read_list;
 
-typedef struct
+typedef struct ticket_list
 {
     unsigned ticket;
-    struct ticket_list *next;
+    ticket_list *next;
 } ticket_list;
 
 void clean_ticket_list(ticket_list *t)
@@ -304,6 +304,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	int debug = 1;
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
+    unsigned ticket;
+    int readable, writeable;
+    read_list *tmp1;
+
+    
 
 	// This line avoids compiler warnings; you may remove it.
 	(void) filp_writable, (void) d;
@@ -311,7 +316,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	// Set 'r' to the ioctl's return value: 0 on success, negative on error
     
     //TO DETERMINE PROCESS TICKET NUMBER FOR QUEUE
-    unsigned ticket;
 
 	if (cmd == OSPRDIOCACQUIRE) {
        		if(debug)
@@ -334,8 +338,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         d->ticket_head++;
         
         
-        int readable = !(d->num_write_locks);
-        int writeable = !(d->num_write_locks) && !(d->num_read_locks) && filp_writable && d->ticket_tail == ticket;
+        readable = !(d->num_write_locks);
+        writeable = !(d->num_write_locks) && !(d->num_read_locks) && filp_writable && d->ticket_tail == ticket;
         
         if(debug)
 			printk("About to wait interruptible\n");
@@ -381,7 +385,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
                 printk("About to increment write locks\n");
             
             //CHECK FOR DEADLOCK FROM CURRENT = READ LOCK
-            read_list *tmp1 = d->read_pids;
+            tmp1 = d->read_pids;
             if(debug)
                 printk("About to check for read dl\n");
             
