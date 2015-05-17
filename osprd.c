@@ -326,15 +326,16 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	if (cmd == OSPRDIOCACQUIRE) {
        		if(debug)
             {
-                printk("In acquire\n");
-                //printProcNum();
+                printk("Enter ACQUIRE ");
+                printProcNum();
             }
         
         osp_spin_lock(&(d->mutex));
         //CHECK FOR DEADLOCK FROM CURRENT = WRITE LOCK
         if(debug)
         {
-			printk("About to check for write dl\n");
+			printk("About to check for write deadlock ");
+            printProcNum();
         }
 
         if (current->pid == d->write_pid)
@@ -347,9 +348,15 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         if (debug)
         {
             if (filp_writable)
-                printk("Process opened ram disk for writing.\n");
+            {
+                printk("Process opened ram disk for writing. ");
+                printProcNum();
+            }
             else
-                printk("Process opened ram disk for reading.\n");
+            {
+                printk("Process opened ram disk for reading. ");
+                printProcNum();
+            }
         }
         
         
@@ -362,18 +369,34 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         writeable = !(d->num_write_locks) && !(d->num_read_locks) && filp_writable && d->ticket_tail == ticket;
         
         if(debug)
-			printk("About to wait interruptible\n");
+        {
+			printk("About to wait interruptible ");
+            printProcNum();
+        }
         
         osp_spin_unlock(&(d->mutex));
         
         //BLOCK PROCESS UNTIL NOT LOCKED, READ/WRITE LOCKS EQUAL 0, AND CORRECT TICKET NUMBER
         r = wait_event_interruptible(d->blockq, (readable || writeable));
         
+        if(debug)
+        {
+            printk("Returned from blocking ");
+            printProcNum();
+        }
+        
         //LOCK SHARED DATA AGAIN
         osp_spin_lock(&(d->mutex));
         
         //PROCESS RECEIVED SIGNAL, SO WE UPDATE TICKETS AS IF PROCESS DIDN'T EXIST
         if (r == -ERESTARTSYS) {
+            
+            if(debug)
+            {
+                printk("Process received signal ");
+                printProcNum();
+            }
+            
             //IF PROCESS WAS ABOUT TO RUN, CALL NEXT PROCESS IN QUEUE
             if(ticket == d->ticket_tail)
             {
@@ -401,16 +424,14 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         //INCREASE NUMBER OF WRITE LOCKS
         if (filp_writable){
-       		if(debug)
-            {
-                printk("About to increment write locks");
-                printProcNum();
-            }
             
             //CHECK FOR DEADLOCK FROM CURRENT = READ LOCK
             tmp1 = d->read_pids;
             if(debug)
-                printk("About to check for read dl\n");
+            {
+                printk("About to check for read deadlock ");
+                printProcNum();
+            }
             
             while (tmp1 != NULL)
             {
@@ -423,7 +444,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
                 tmp1 = tmp1->next;
             }
             
-
+            if(debug)
+            {
+                printk("About to increment write locks ");
+                printProcNum();
+            }
             
             d->num_write_locks++;
             d->write_pid = current->pid;
@@ -432,7 +457,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         else
         {
             if(debug)
-                printk("About to increment read locks\n");
+            {
+                printk("About to increment read locks ");
+                printProcNum();
+            }
+            
             addReadLock(d->read_pids, current->pid, d);
         }
         
@@ -445,7 +474,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         //UNLOCK SHARED DATA
         osp_spin_unlock(&(d->mutex));
         if(debug)
-            printk("Succesfully exited acquire and gave up spink lock\n");
+        {
+            printk("Succesfully exited acquire and gave up spink lock ");
+            printProcNum();
+        }
         r = 0;
 
 		// EXERCISE: Lock the ramdisk.
@@ -499,6 +531,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		//first we can replicate our code to check for deadlocks,
 		//changing the return values when we find a deadlock
 		osp_spin_lock(&(d->mutex));
+        
+        if (debug)
+        {
+            printk("Enter TRYACQUIRE ");
+            printProcNum();
+        }
 		
 		//CHECK FOR DEADLOCK FROM CURRENT = WRITE LOCK
 		if (current->pid == d->write_pid)
@@ -556,7 +594,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		//we can allocate a read lock if we don't have any write locks out
 		else
 		{
-			printk("Trying to acquire a read lock\n");
+            if (debug)
+            {
+                printk("Trying to acquire a read lock ");
+                printProcNum();
+            }
+            
 			osp_spin_lock(&(d->mutex));
 			if(d->num_write_locks == 0)
 			{
@@ -574,12 +617,20 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			}
 		}
 
-
+        if (debug)
+        {
+            printk("Exiting TRYACQUIRE ");
+            printProcNum();
+        }
+        
 		r = 0;
 
 	} else if (cmd == OSPRDIOCRELEASE) {
         if (debug)
-            printk("Enter OSPRDIOCRELEASE\n");
+        {
+            printk("Enter RELEASE ");
+            printProcNum();
+        }
 
 		// EXERCISE: Unlock the ramdisk.
 		//
@@ -610,14 +661,24 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		filp->f_flags &= ~F_OSPRD_LOCKED;
         
         osp_spin_unlock(&(d->mutex));
+            
+        if(debug)
+        {
+            printk("About to wake up all processes ");
+            printProcNum();
+        }
+            
         wake_up_all(&(d->blockq));
-        
 		
 		r = 0;
         }
         
         if (debug)
-            printk("Lock released\n");
+        {
+            printk("Lock released and RELEASE exited ");
+            printProcNum();
+        }
+        
     } else
 		r = -ENOTTY; /* unknown command */
 	return r;
