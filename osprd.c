@@ -328,7 +328,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
        		if(debug)
             {
                 printk("In acquire\n");
-                printProcNum();
+                //printProcNum();
             }
         
         osp_spin_lock(&(d->mutex));
