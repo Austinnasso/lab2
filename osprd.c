@@ -205,10 +205,10 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
         {
             //THEN ONLY ONE NODE
             if (list->next == NULL)
-                d->read_list = NULL;
+                d->read_pids = NULL;
             //SET HEAD TO SECOND NODE
             else
-                d->read_list = list->next;
+                d->read_pids = list->next;
         }
         
         if (debug)
