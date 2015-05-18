@@ -339,9 +339,8 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
                 printk("Awake processes before ram disk file close ");
                 printProcNum();
             }
-            
-            if (!d->num_write_locks && !d->num_read_locks)
-                wake_up_all(&(d->blockq));
+        
+            wake_up_all(&(d->blockq));
             osp_spin_unlock(&(d->mutex));
 			
 		}
