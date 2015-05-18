@@ -173,7 +173,7 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
     
 	else
 	{
-		read_list* prev = NULL;
+		read_list* prev = list;
         
         if (debug)
         {
@@ -183,21 +183,9 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
         
 		while(list != NULL && list->pid != pid)
 		{
-            if (debug)
-            {
-                printk("IN LOOP TEST ");
-                printProcNum();
-            }
-            
 			prev = list;
 			list = list->next;
 		}
-        
-        if (debug)
-        {
-            printk("AFTER LOOP TEST ");
-            printProcNum();
-        }
         
         if (list == NULL)
         {
