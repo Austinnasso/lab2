@@ -442,7 +442,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         {
             printk("Returned from blocking ");
             printProcNum();
-            printk("Ticke No. %i", ticket); 
+            printk("Ticke No. %i\n", ticket); 
         }
         
         //LOCK SHARED DATA AGAIN
