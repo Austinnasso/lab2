@@ -340,7 +340,8 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
                 printProcNum();
             }
             
-            wake_up_all(&(d->blockq));
+            if (!d->num_write_locks && !d->num_read_locks)
+                wake_up_all(&(d->blockq));
             osp_spin_unlock(&(d->mutex));
 			
 		}
