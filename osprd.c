@@ -171,6 +171,10 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
 			prev = list;
 			list = list->next;
 		}
+        
+        if (list == NULL)
+            return;
+            
 		prev->next = list->next;
 		kfree(list);
 		d->num_read_locks -= 1;
