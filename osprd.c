@@ -309,8 +309,8 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 			else
 			{
 				//we are reading, remove this node from the read_pids lsit and adjust the pointers accordingly
-				//removeReadLock(d->read_pids, current->pid, d);
-                d->num_read_locks--;
+				removeReadLock(d->read_pids, current->pid, d);
+                //d->num_read_locks--;
 			}
             
 			//wake up procs and unlock the lock
