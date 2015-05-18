@@ -173,7 +173,7 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
     
 	else
 	{
-		read_list* prev = list;
+        read_list* prev = NULL;
         
         if (debug)
         {
@@ -187,6 +187,7 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
 			list = list->next;
 		}
         
+        
         if (list == NULL)
         {
             if (debug)
@@ -197,7 +198,19 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
             return;
         }
         
-		prev->next = list->next;
+        //IF PREV NOT SET, THEN FIRST READ NODE IS THE ONE TO REMOVE
+        if (prev != NULL)
+            prev->next = list->next;
+        else
+        {
+            //THEN ONLY ONE NODE
+            if (list->next == NULL)
+                d->read_list = NULL;
+            //SET HEAD TO SECOND NODE
+            else
+                d->read_list = list->next;
+        }
+        
         if (debug)
         {
             printk("About to remove read pid from list. ");
@@ -205,7 +218,7 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
         }
         
 		kfree(list);
-		d->num_read_locks --;
+		d->num_read_locks--;
 	}
 }
 #define NOSPRD 4
