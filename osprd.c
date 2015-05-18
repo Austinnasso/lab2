@@ -161,6 +161,7 @@ void printProcNum()
 
 void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
 {
+    int i = 1;
 	if(list == NULL)
     {
         if (debug)
@@ -183,6 +184,8 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
         
 		while(list != NULL && list->pid != pid)
 		{
+            if (debug)
+                printk("iteration: %i ",i++);
 			prev = list;
 			list = list->next;
 		}
@@ -205,7 +208,7 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
         }
         
 		kfree(list);
-		d->num_read_locks -= 1;
+		d->num_read_locks --;
 	}
 }
 #define NOSPRD 4
