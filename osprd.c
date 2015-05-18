@@ -445,7 +445,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         {
             printk("Returned from blocking ");
             printProcNum();
-            printk("Ticket No. %i\n", ticket);
+            printk("Ticket No. %i\nTicket Tail No. %i\n", ticket, d->ticket_tail);
         }
         
         //PROCESS RECEIVED SIGNAL, SO WE UPDATE TICKETS AS IF PROCESS DIDN'T EXIST
