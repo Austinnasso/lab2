@@ -438,15 +438,15 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         //BLOCK PROCESS UNTIL NOT LOCKED, READ/WRITE LOCKS EQUAL 0, AND CORRECT TICKET NUMBER
         r = wait_event_interruptible(d->blockq, !(d->num_write_locks) || (!(d->num_write_locks) && !(d->num_read_locks) && filp_writable && (d->ticket_tail == ticket)));
         
+        //LOCK SHARED DATA AGAIN
+        osp_spin_lock(&(d->mutex));
+        
         if(debug)
         {
             printk("Returned from blocking ");
             printProcNum();
-            printk("Ticke No. %i\n", ticket); 
+            printk("Ticket No. %i\n", ticket);
         }
-        
-        //LOCK SHARED DATA AGAIN
-        osp_spin_lock(&(d->mutex));
         
         //PROCESS RECEIVED SIGNAL, SO WE UPDATE TICKETS AS IF PROCESS DIDN'T EXIST
         if (r == -ERESTARTSYS) {
