@@ -339,13 +339,13 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
                 printk("Awake processes before ram disk file close ");
                 printProcNum();
             }
-        
-            wake_up_all(&(d->blockq));
-            osp_spin_unlock(&(d->mutex));
 			
 		}
 		// This line avoids compiler warnings; you may remove it.
 		(void) filp_writable, (void) d;
+        
+        wake_up_all(&(d->blockq));
+        osp_spin_unlock(&(d->mutex));
         
         if (debug)
         {
