@@ -165,7 +165,7 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
     {
         if (debug)
         {
-            printk("Cannot remove null list. ")
+            printk("Cannot remove null list. ");
             printProcNum();
         }
 		return;
@@ -184,7 +184,7 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
         {
             if (debug)
             {
-                printk("Read PID not found in list. ")
+                printk("Read PID not found in list. ");
                 printProcNum();
             }
             return;
@@ -193,7 +193,7 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
 		prev->next = list->next;
         if (debug)
         {
-            printk("About to remove read pid from list. ")
+            printk("About to remove read pid from list. ");
             printProcNum();
         }
         
