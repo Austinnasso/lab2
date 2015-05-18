@@ -174,6 +174,13 @@ void removeReadLock(read_list* list, pid_t pid, osprd_info_t *d)
 	else
 	{
 		read_list* prev = NULL;
+        
+        if (debug)
+        {
+            printk("About to iterate through read PIDs. ");
+            printProcNum();
+        }
+        
 		while(list != NULL && list->pid != pid)
 		{
 			prev = list;
