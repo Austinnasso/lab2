@@ -480,6 +480,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
                     d->dead_tickets->next = NULL;
                 }
             }
+            
+            osp_spin_unlock(&(d->mutex));
             return r;
         }
 	
